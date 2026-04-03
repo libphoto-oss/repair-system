@@ -95,6 +95,10 @@ function doPost(e) {
                 replyToLine(replyToken, `❌ 找不到單號 #${reportId}。`);
               }
 
+            } else if (aiResult.intent === "CHAT") {
+              // 一般問候與閒聊，直接回傳 AI 生成的對話
+              replyToLine(replyToken, aiResult.reply);
+
             } else {
               replyToLine(replyToken, "抱歉，我聽不太懂您的需求。請嘗試說：\n「我是設備組王老師，報修教學大樓203的投影機，畫面閃爍」\n或「麻煩把單號 25 結案」");
             }
@@ -248,16 +252,18 @@ function callGeminiAPI(text) {
   if (!CONFIG.GEMINI_API_KEY) return null;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
 
-  const prompt = `你是一個學校報修系統的 AI 助理，請判斷使用者的文字意圖，擷取實體並嚴格回傳只包含 JSON 格式的字串，不要包含 \`\`\`json 標記，也不要有其他廢話。
+  const prompt = `你是一個名叫「比比」的學校報修系統 AI 助理。你的個性親切、樂於助人。請判斷使用者的文字意圖，擷取實體並嚴格回傳只包含 JSON 格式的字串，不要包含 \`\`\`json 標記，也不要有其他廢話。
 
 意圖選項：
 1. REPORT (報修)：提供包含 department(單位), teacher(姓名), location(地點), classroom(教室), category(請從 水電設備/資訊設備（電腦/投影機）/桌椅傢具/建築毀損/其他 擇一), description(問題描述)。沒提到的用"未提供"代替。
 2. CLOSE (結案)：使用者要求結案某筆單號，擷取 id(單號, 數字型態)。
-3. UNKNOWN (其他)：無法判斷。
+3. CHAT (聊天)：使用者若只是呼叫你（例如：「比比」）、打招呼或一般對話，請提供一段親切的文字回覆。例如：「我在！有什麼我可以幫忙的嗎？」
+4. UNKNOWN (其他)：無法判斷。
 
 回傳格式規範：
 若為 REPORT: {"intent": "REPORT", "data": {"department": "...", "teacher": "...", "location": "...", "classroom": "...", "category": "...", "description": "..."}}
 若為 CLOSE: {"intent": "CLOSE", "id": 123}
+若為 CHAT: {"intent": "CHAT", "reply": "這裡是你針對聊天的親切回覆..."}
 若為 UNKNOWN: {"intent": "UNKNOWN"}
 
 使用者訊息：「${text}」`;
