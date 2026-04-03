@@ -43,9 +43,12 @@ export default function ReportForm() {
   return (
     <div className="container">
       <div className="nav-links">
-        <Link href="/dashboard">進入維修管理系統</Link>
+        <Link href="/dashboard" style={{ background: 'rgba(255,255,255,0.7)', padding: '0.5rem 1rem', borderRadius: '8px', backdropFilter: 'blur(5px)' }}>進入維修管理系統</Link>
       </div>
       <div className="card">
+        <div style={{ textAlign: 'center', marginBottom: '-10px' }}>
+          <img src="/bibi_mascot.png" alt="比比狗狗智能助理" style={{ width: '130px', height: '130px', objectFit: 'contain', filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }} />
+        </div>
         <h1>維修通報申請單</h1>
         {message && (
           <div style={{ textAlign: 'center', marginBottom: '1.5rem', fontWeight: 'bold', color: isSuccess ? 'var(--success-color)' : 'red' }}>

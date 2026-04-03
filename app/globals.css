@@ -11,6 +11,10 @@
 
 body {
   background-color: var(--bg-color);
+  background-image: url('/bibi_bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: system-ui, -apple-system, sans-serif;
   margin: 0;
@@ -25,10 +29,13 @@ body {
 }
 
 .card {
-  background: var(--surface-color);
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  padding: 2rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem 2rem;
   transition: transform 0.2s ease;
 }
 
