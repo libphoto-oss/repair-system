@@ -1,85 +1,123 @@
 // ============================================================
-// 校園維修通報系統 - Google Apps Script 後端
+// 校園維修通報系統 - Google Apps Script 後端（AI 智能升級版）
 // 
 // 使用方式：
-// 1. 開啟 Google Sheets，建立新的試算表
-// 2. 點選「擴充功能」→「Apps Script」
-// 3. 將此檔案內容貼入 Apps Script 編輯器
-// 4. 修改下方 CONFIG 設定
-// 5. 執行 initializeSheet() 函式初始化試算表
-// 6. 部署為網頁應用程式（部署 → 新增部署作業）
-//    - 執行身分：自己
-//    - 存取權限：所有人
+// 1. 開啟 Google Sheets，擴充功能 → Apps Script
+// 2. 貼入本程式碼，修改下方 CONFIG。
+// 3. 點選「執行」initializeSheet()
+// 4. 部署為網頁應用程式（所有人皆可存取），並設定為 LINE Webhook
 // ============================================================
 
-// ===== 設定區域（請依實際情況修改） =====
 const CONFIG = {
   SHEET_NAME: '報修紀錄',
-  DASHBOARD_PASSWORD: 'admin1234',
-  LINE_CHANNEL_ACCESS_TOKEN: '',  // 填入你的 LINE Channel Access Token
-  LINE_USER_ID: '',               // 填入你的 LINE User ID 或 Group ID
+  DASHBOARD_PASSWORD: 'admin1234', // 網頁管理密碼
+  LINE_CHANNEL_ACCESS_TOKEN: '',   // LINE Bot Token
+  LINE_USER_ID: '',                // 管理員的 LINE ID（收到新報修會通知他。只有他能用 LINE 改單）
+  GEMINI_API_KEY: '',              // Google AI Studio 申請的免費金鑰
 };
 
-// ===== 初始化函式（首次使用時執行一次） =====
+// ==========================================
+// 初始化與 HTTP 處理
+// ==========================================
+
 function initializeSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
-
   if (!sheet) {
     sheet = ss.insertSheet(CONFIG.SHEET_NAME);
   }
 
-  // 清除並寫入表頭
-  sheet.getRange(1, 1, 1, 13).setValues([[
+  // 增加第 14 欄：reporterLineId（隱藏欄位）
+  sheet.getRange(1, 1, 1, 14).setValues([[
     'id', 'reportTime', 'department', 'teacher', 'location',
     'classroom', 'description', 'category', 'status',
-    'maintenanceDate', 'isClosed', 'assignedPerson', 'createdAt'
+    'maintenanceDate', 'isClosed', 'assignedPerson', 'createdAt', 'reporterLineId'
   ]]);
 
-  // 格式化表頭
-  const headerRange = sheet.getRange(1, 1, 1, 13);
+  const headerRange = sheet.getRange(1, 1, 1, 14);
   headerRange.setFontWeight('bold');
   headerRange.setBackground('#4f46e5');
   headerRange.setFontColor('#ffffff');
   headerRange.setHorizontalAlignment('center');
 
-  // 設定欄寬
-  const widths = [50, 160, 120, 100, 120, 120, 260, 150, 150, 120, 80, 100, 160];
-  widths.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
-
-  // 凍結表頭
   sheet.setFrozenRows(1);
-
   SpreadsheetApp.getUi().alert('試算表初始化完成！');
 }
 
-// ===== HTTP 請求處理 =====
-
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || '';
-
   if (action === 'getReports') {
     return jsonResponse(getAllReports());
   }
-
-  return jsonResponse({ error: 'Unknown action', availableActions: ['getReports'] });
+  return jsonResponse({ error: 'Unknown action' });
 }
 
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
-    const action = body.action;
 
+    // ==========================================
+    // 1. LINE Webhook 處理 (AI 助理模式)
+    // ==========================================
+    if (body.events !== undefined) {
+      if (Array.isArray(body.events)) {
+        body.events.forEach(function(event) {
+          if (event.type === 'message' && event.message.type === 'text') {
+            const userMessage = event.message.text;
+            const replyToken = event.replyToken;
+            const userId = event.source.userId;
+            
+            // 將使用者的話交給 AI 解析
+            const aiResult = callGeminiAPI(userMessage);
+            if (!aiResult) {
+              replyToLine(replyToken, "系統連線異常，請稍後再試。");
+              return;
+            }
+
+            // 判斷 AI 解析出的意圖
+            if (aiResult.intent === "REPORT") {
+              const result = addReport({ ...aiResult.data, _reporterLineId: userId });
+              replyToLine(replyToken, `✅ 已為您登記報修！單號為 #${result.id}。\n處理完畢後會透過 LINE 通知您。`);
+              // 推播給管理員
+              pushToLine(CONFIG.LINE_USER_ID, `🔔【新報修(AI代收)】\n單號: #${result.id}\n單位: ${aiResult.data.department} (${aiResult.data.teacher})\n地點: ${aiResult.data.location} - ${aiResult.data.classroom}\n維修項目: ${aiResult.data.category}\n說明: ${aiResult.data.description}`);
+            
+            } else if (aiResult.intent === "CLOSE") {
+              // 驗證身分：只有管理員能透過 LINE 直接結案
+              if (userId !== CONFIG.LINE_USER_ID) {
+                replyToLine(replyToken, "⛔ 抱歉，只有管理員能變更報修狀態。");
+                return;
+              }
+              const reportId = aiResult.id;
+              const updateResult = updateReport(reportId, { isClosed: 1, status: '已修復' }, 'LINE_ADMIN');
+              if (updateResult.success) {
+                replyToLine(replyToken, `✅ 單號 #${reportId} 已結案！`);
+              } else {
+                replyToLine(replyToken, `❌ 找不到單號 #${reportId}。`);
+              }
+
+            } else {
+              replyToLine(replyToken, "抱歉，我聽不太懂您的需求。請嘗試說：\n「我是設備組王老師，報修教學大樓203的投影機，畫面閃爍」\n或「麻煩把單號 25 結案」");
+            }
+          }
+        });
+      }
+      return jsonResponse({ status: 'ok' });
+    }
+
+    // ==========================================
+    // 2. 網頁端 API 處理
+    // ==========================================
+    const action = body.action;
     if (action === 'addReport') {
       const result = addReport(body.data);
+      // 網頁填寫推播給管理員
+      pushToLine(CONFIG.LINE_USER_ID, `🔔【新報修通知】\n單號: #${result.id}\n單位: ${body.data.department} (${body.data.teacher})\n地點: ${body.data.location} - ${body.data.classroom}\n維修項目: ${body.data.category}\n說明: ${body.data.description}`);
       return jsonResponse(result);
     }
-
     if (action === 'updateReport') {
-      const result = updateReport(body.id, body.data);
+      const result = updateReport(body.id, body.data, 'WEB_ADMIN');
       return jsonResponse(result);
     }
-
     if (action === 'auth') {
       const success = body.password === CONFIG.DASHBOARD_PASSWORD;
       return jsonResponse({ success });
@@ -91,25 +129,21 @@ function doPost(e) {
   }
 }
 
-// ===== 回應工具 =====
-
 function jsonResponse(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// ===== 資料操作 =====
+// ==========================================
+// Google Sheets 資料操作
+// ==========================================
 
 function getSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  return ss.getSheetByName(CONFIG.SHEET_NAME);
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET_NAME);
 }
 
 function getAllReports() {
   const sheet = getSheet();
   const data = sheet.getDataRange().getValues();
-
   if (data.length <= 1) return [];
 
   const headers = data[0];
@@ -117,18 +151,11 @@ function getAllReports() {
 
   for (let i = 1; i < data.length; i++) {
     const row = {};
-    headers.forEach((header, j) => {
-      let value = data[i][j];
-      // 確保 id 和 isClosed 為數字型別
-      if (header === 'id' || header === 'isClosed') {
-        value = Number(value) || 0;
-      }
-      row[header] = value;
+    headers.forEach((h, j) => {
+      row[h] = (h === 'id' || h === 'isClosed') ? Number(data[i][j]) || 0 : data[i][j];
     });
     reports.push(row);
   }
-
-  // 依照 id 降序排列（最新的在前）
   reports.sort((a, b) => b.id - a.id);
   return reports;
 }
@@ -136,7 +163,6 @@ function getAllReports() {
 function getNextId(sheet) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return 1;
-
   let maxId = 0;
   for (let i = 1; i < data.length; i++) {
     const id = Number(data[i][0]);
@@ -145,102 +171,139 @@ function getNextId(sheet) {
   return maxId + 1;
 }
 
-function addReport(reportData) {
+function addReport(data) {
   const sheet = getSheet();
   const newId = getNextId(sheet);
   const now = new Date().toISOString();
 
   sheet.appendRow([
     newId,
-    reportData.reportTime || now,
-    reportData.department || '',
-    reportData.teacher || '',
-    reportData.location || '',
-    reportData.classroom || '',
-    reportData.description || '',
-    reportData.category || '',
+    data.reportTime || now,
+    data.department || '',
+    data.teacher || '',
+    data.location || '',
+    data.classroom || '',
+    data.description || '',
+    data.category || '其他',
     '未處理',
     '',
     0,
     '',
-    now
+    now,
+    data._reporterLineId || '' // 若從網頁填則為空；從 LINE 填則寫入 userId
   ]);
-
-  // 發送 LINE 通知
-  sendLineNotification(reportData);
 
   return { id: newId, success: true };
 }
 
-function updateReport(id, data) {
+function updateReport(id, data, source) {
   const sheet = getSheet();
   const allData = sheet.getDataRange().getValues();
   const headers = allData[0];
 
   for (let i = 1; i < allData.length; i++) {
     if (String(allData[i][0]) === String(id)) {
-      const rowIndex = i + 1; // Sheets 是 1-based
+      const rowIndex = i + 1;
+      let statusUpdated = false;
+      let closedUpdated = false;
 
       if (data.status !== undefined) {
-        const col = headers.indexOf('status') + 1;
-        if (col > 0) sheet.getRange(rowIndex, col).setValue(data.status);
+        sheet.getRange(rowIndex, headers.indexOf('status') + 1).setValue(data.status);
+        statusUpdated = true;
       }
       if (data.maintenanceDate !== undefined) {
-        const col = headers.indexOf('maintenanceDate') + 1;
-        if (col > 0) sheet.getRange(rowIndex, col).setValue(data.maintenanceDate);
+        sheet.getRange(rowIndex, headers.indexOf('maintenanceDate') + 1).setValue(data.maintenanceDate);
       }
       if (data.isClosed !== undefined) {
-        const col = headers.indexOf('isClosed') + 1;
-        if (col > 0) sheet.getRange(rowIndex, col).setValue(data.isClosed ? 1 : 0);
+        let isC = data.isClosed ? 1 : 0;
+        sheet.getRange(rowIndex, headers.indexOf('isClosed') + 1).setValue(isC);
+        if (isC === 1) closedUpdated = true;
+        if (isC === 0 && data.status !== undefined) closedUpdated = false; // 從已結案改處理中
       }
       if (data.assignedPerson !== undefined) {
-        const col = headers.indexOf('assignedPerson') + 1;
-        if (col > 0) sheet.getRange(rowIndex, col).setValue(data.assignedPerson);
+        sheet.getRange(rowIndex, headers.indexOf('assignedPerson') + 1).setValue(data.assignedPerson);
+      }
+
+      // === 主動通知原填報人 ===
+      const reporterLineId = String(allData[i][headers.indexOf('reporterLineId')] || '');
+      if (reporterLineId && reporterLineId.length > 10) { // 簡單檢查
+        if (closedUpdated) {
+          pushToLine(reporterLineId, `🔔 您的報修 (單號 #${id}) 已結案！\n地點：${allData[i][headers.indexOf('location')]} ${allData[i][headers.indexOf('classroom')]} \n感謝您的通報。`);
+        } else if (statusUpdated && data.status !== "未處理" && data.status !== "已修復") {
+          pushToLine(reporterLineId, `📢 您的報修 (單號 #${id}) 進度更新\n目前狀態：${data.status}`);
+        }
       }
 
       return { success: true };
     }
   }
-
   return { error: '找不到指定的報修紀錄' };
 }
 
-// ===== LINE 通知 =====
+// ==========================================
+// Google Gemini AI 處理
+// ==========================================
 
-function sendLineNotification(reportData) {
-  const token = CONFIG.LINE_CHANNEL_ACCESS_TOKEN;
-  const targetId = CONFIG.LINE_USER_ID;
+function callGeminiAPI(text) {
+  if (!CONFIG.GEMINI_API_KEY) return null;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
+  
+  const prompt = `你是一個學校報修系統的 AI 助理，請判斷使用者的文字意圖，擷取實體並嚴格回傳只包含 JSON 格式的字串，不要包含 \`\`\`json 標記，也不要有其他廢話。
 
-  if (!token || !targetId) {
-    Logger.log('LINE 設定未填寫，跳過通知。');
-    return;
-  }
+意圖選項：
+1. REPORT (報修)：提供包含 department(單位), teacher(姓名), location(地點), classroom(教室), category(請從 水電設備/資訊設備（電腦/投影機）/桌椅傢具/建築毀損/其他 擇一), description(問題描述)。沒提到的用"未提供"代替。
+2. CLOSE (結案)：使用者要求結案某筆單號，擷取 id(單號, 數字型態)。
+3. UNKNOWN (其他)：無法判斷。
 
-  const message =
-    '【新報修通知】\n' +
-    '單位/班級: ' + reportData.department + ' (' + reportData.teacher + ')\n' +
-    '地點: ' + reportData.location + ' - ' + reportData.classroom + '\n' +
-    '報修項目: ' + reportData.category + '\n' +
-    '問題說明: ' + reportData.description + '\n' +
-    '填報時間: ' + reportData.reportTime;
+回傳格式規範：
+若為 REPORT: {"intent": "REPORT", "data": {"department": "...", "teacher": "...", "location": "...", "classroom": "...", "category": "...", "description": "..."}}
+若為 CLOSE: {"intent": "CLOSE", "id": 123}
+若為 UNKNOWN: {"intent": "UNKNOWN"}
+
+使用者訊息：「${text}」`;
 
   const options = {
     method: 'post',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token,
-    },
+    contentType: 'application/json',
     payload: JSON.stringify({
-      to: targetId,
-      messages: [{ type: 'text', text: message }],
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1 }
     }),
-    muteHttpExceptions: true,
+    muteHttpExceptions: true
   };
 
   try {
-    const response = UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', options);
-    Logger.log('LINE 通知傳送結果: ' + response.getContentText());
+    const res = UrlFetchApp.fetch(url, options);
+    const json = JSON.parse(res.getContentText());
+    let aiText = json.candidates[0].content.parts[0].text;
+    aiText = aiText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(aiText);
   } catch (err) {
-    Logger.log('LINE 通知傳送失敗: ' + err.message);
+    Logger.log("Gemini Error: " + err.message);
+    return null;
   }
+}
+
+// ==========================================
+// LINE 訊息機制
+// ==========================================
+
+function pushToLine(userId, text) {
+  if (!CONFIG.LINE_CHANNEL_ACCESS_TOKEN || !userId) return;
+  UrlFetchApp.fetch('https://api.line.me/v2/bot/message/push', {
+    method: 'post',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.LINE_CHANNEL_ACCESS_TOKEN },
+    payload: JSON.stringify({ to: userId, messages: [{ type: 'text', text: text }] }),
+    muteHttpExceptions: true
+  });
+}
+
+function replyToLine(replyToken, text) {
+  if (!CONFIG.LINE_CHANNEL_ACCESS_TOKEN || !replyToken) return;
+  UrlFetchApp.fetch('https://api.line.me/v2/bot/message/reply', {
+    method: 'post',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.LINE_CHANNEL_ACCESS_TOKEN },
+    payload: JSON.stringify({ replyToken: replyToken, messages: [{ type: 'text', text: text }] }),
+    muteHttpExceptions: true
+  });
 }

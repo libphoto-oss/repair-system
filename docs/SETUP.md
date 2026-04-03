@@ -1,198 +1,92 @@
-# 校園維修通報系統 - 部署設定指南
+# 校園維修通報系統 - 部署設定指南 (包含 AI 智能版)
 
-本系統使用 **GitHub Pages**（靜態前端）+ **Google Sheets**（資料儲存）+ **Google Apps Script**（API）的架構，完全免費。
-
----
-
-## 架構說明
-
-```
-GitHub Pages          Google Apps Script         Google Sheets
-（靜態網頁）    --->   （免費 API 伺服器）   --->  （資料庫）
-                              |
-                              v
-                       LINE Messaging API
-                       （報修推播通知）
-```
+本系統使用 **GitHub Pages** (靜態前端) + **Google Sheets** (資料庫) + **Google Apps Script** (免費 API 與 LINE Webhook) 的架構。新加入的 **Google Gemini AI** 功能，可讓 LINE 機器人擁有聽懂「自然語言報修」與自動回覆的能力！
 
 ---
 
-## 第一步：設定 Google Sheets + Apps Script
+## 第一步：申請 Google Gemini API 金鑰 (免費)
 
-### 1.1 建立 Google Sheets
+為了讓 LINE Bot 可以讀懂日常對話（例如：「我是輔導室周老師，諮商室冷氣不冷」），我們需要 Google 的 AI 來幫忙提取欄位。
 
-1. 開啟 [Google Sheets](https://sheets.google.com)
-2. 點選「空白試算表」建立新的試算表
-3. 將試算表命名為「校園維修通報系統」
+1. 前往 **[Google AI Studio](https://aistudio.google.com/)**，點擊登入。
+2. 接受服務條款後，點擊左側導覽列的 **「Get API key」**。
+3. 點擊藍色按鈕 **「Create API key」**，選擇建立。
+4. 網頁會顯示一串以 `AIza` 開頭的字串，這就是你的 `GEMINI_API_KEY`，請將它複製並妥善保存。
 
-### 1.2 建立 Apps Script
+---
 
-1. 在試算表中，點選上方選單「擴充功能」→「Apps Script」
-2. 在 Apps Script 編輯器中，將預設的 `function myFunction(){}` **全部刪除**
-3. 開啟專案中的 `docs/google-apps-script.js` 檔案
-4. 將檔案內容**全部複製**，貼入 Apps Script 編輯器
-5. 修改最上方的 `CONFIG` 設定：
+## 第二步：設定 Google Sheets + Apps Script
+
+### 2.1 建立 Google Sheets
+
+1. 開啟 [Google Sheets](https://sheets.google.com)，建立新的空白試算表。
+2. 命名為「校園維修通報系統」。
+
+### 2.2 建立 Apps Script
+
+1. 點選試算表上方選單：「擴充功能」→「Apps Script」
+2. 在 Apps Script 編輯器中，將預設的程式碼**全部刪除**。
+3. 把本專案的 `docs/google-apps-script.js` 內容**全部複製並貼上**。
+4. 設定最上方的 `CONFIG` 區塊：
 
 ```javascript
 const CONFIG = {
-  SHEET_NAME: '報修紀錄',           // 可自訂工作表名稱
+  SHEET_NAME: '報修紀錄',
   DASHBOARD_PASSWORD: 'admin1234', // 修改為你的管理密碼
-  LINE_CHANNEL_ACCESS_TOKEN: '',   // 填入 LINE Token（見第三步）
-  LINE_USER_ID: '',                // 填入 LINE User ID（見第三步）
+  LINE_CHANNEL_ACCESS_TOKEN: '你的LINE_TOKEN',
+  LINE_USER_ID: '管理員的LINE_ID', // 只有這個 ID 可以在 LINE 輸入「結案單號XX」
+  GEMINI_API_KEY: 'AIza開頭的字串（第一步取得的金鑰）', 
 };
 ```
+5. 點擊上方的儲存 (磁碟片圖示)。
 
-6. 點選上方的「儲存」按鈕（或按 Ctrl+S）
+### 2.3 初始化試算表
 
-### 1.3 初始化試算表
+1. 選擇上方函式下拉選單為 `initializeSheet`。
+2. 點擊「執行」。首次授權請選擇「進階」→「前往(不安全)」。
+3. 等待執行完畢，回到試算表，會發現標題欄自動建立了（包含隱藏的 `reporterLineId` 欄位供通知使用）。
 
-1. 在 Apps Script 編輯器中，選擇上方的函式下拉選單，選擇 `initializeSheet`
-2. 點選「執行」按鈕
-3. 首次執行時會要求授權，點選「審查權限」→ 選擇你的 Google 帳號 → 「進階」→「前往（不安全）」→「允許」
-4. 執行完成後，回到 Google Sheets 確認已建立「報修紀錄」工作表並含有表頭
+### 2.4 部署與取得 Webhook URL
 
-### 1.4 部署為 Web App
-
-1. 在 Apps Script 編輯器中，點選右上角「部署」→「新增部署作業」
-2. 點選左側齒輪圖示，選擇「網頁應用程式」
-3. 設定：
-   - **說明**：維修通報系統 API
-   - **執行身分**：自己
-   - **存取權限**：所有人
-4. 點選「部署」
-5. **複製產生的網址**（格式如 `https://script.google.com/macros/s/xxxxxxx/exec`）
-
-> 這個網址就是你的 API 網址，後續步驟會用到。
+1. 點擊右上角「部署」→「新增部署作業」。
+2. 選擇「網頁應用程式」，設定以下：
+   - 執行身分：自己
+   - 存取權限：**所有人**
+3. 點擊部署，並**複製產生的「網頁應用程式網址」** (https://script.google.com/macros/s/xxxx/exec)。
 
 ---
 
-## 第二步：設定 GitHub Pages
+## 第三步：設定 GitHub Pages 前端
 
-### 2.1 註冊 GitHub 帳號
-
-1. 前往 [github.com](https://github.com) 點選「Sign up」
-2. 依照步驟完成註冊（免費帳號即可）
-
-### 2.2 建立 Repository
-
-1. 登入 GitHub 後，點選右上角「+」→「New repository」
-2. 設定：
-   - **Repository name**：`repair-system`（或自訂名稱）
-   - **Visibility**：Public（GitHub Pages 免費版需要公開）
-3. 點選「Create repository」
-4. 記下你的 GitHub 使用者名稱和 repo 名稱
-
-### 2.3 設定 Repository Variable
-
-1. 在 Repository 頁面，點選「Settings」→ 左側選單「Secrets and variables」→「Actions」
-2. 切換到「Variables」分頁
-3. 點選「New repository variable」
-4. 新增：
-   - **Name**: `NEXT_PUBLIC_API_URL`
-   - **Value**: 貼上第一步取得的 Google Apps Script 網址
-5. 點選「Add variable」
-
-### 2.4 啟用 GitHub Pages
-
-1. 在 Repository 頁面，點選「Settings」→ 左側選單「Pages」
-2. **Source** 選擇「GitHub Actions」
-
-### 2.5 上傳程式碼
-
-在你的電腦上開啟終端機（Terminal），依序執行：
-
-```bash
-cd /Users/matt/Desktop/repair-system
-
-git init
-git add .
-git commit -m "首次提交：校園維修通報系統"
-git branch -M main
-git remote add origin https://github.com/你的使用者名稱/repair-system.git
-git push -u origin main
-```
-
-> 推送完成後，GitHub Actions 會自動建構並部署網站。
-
-### 2.6 確認部署狀態
-
-1. 在 Repository 頁面，點選「Actions」分頁
-2. 確認「Deploy to GitHub Pages」工作流程執行成功（綠色勾勾）
-3. 部署完成後，網址為：`https://你的使用者名稱.github.io/repair-system/`
+1. 開啟 GitHub，建立新的 Public Repository `repair-system`。
+2. 前往 `Settings` → `Secrets and variables` → `Actions` → `Variables`。
+3. 增加 Repository Variable：
+   - Name: `NEXT_PUBLIC_API_URL`
+   - Value: `你在 2.4 步驟複製的網址`
+4. 開啟終端機，上傳程式碼即可自動建構部署（請參考標準 Git 操作）。
 
 ---
 
-## 第三步：設定 LINE 通知（選擇性）
+## 第四步：設定 LINE 官方帳號設定
 
-如果不需要 LINE 通知，可跳過此步驟。
-
-### 3.1 建立 LINE Bot
-
-1. 前往 [LINE Developers](https://developers.line.biz/) 並登入
-2. 建立 Provider（如「學校名稱」）
-3. 建立 Messaging API Channel
-4. 在 Channel 設定頁面取得：
-   - **Channel Access Token**（在「Messaging API」分頁最下方，點「Issue」產生）
-   - **Your User ID**（在「Basic settings」分頁的「Your user ID」）
-
-### 3.2 更新 Apps Script 設定
-
-1. 回到 Google Apps Script 編輯器
-2. 修改 `CONFIG` 中的 LINE 設定：
-
-```javascript
-LINE_CHANNEL_ACCESS_TOKEN: '你的_Channel_Access_Token',
-LINE_USER_ID: '你的_User_ID',
-```
-
-3. 儲存後，點選「部署」→「管理部署作業」→ 點選編輯圖示 → 版本選擇「建立新版本」→「部署」
+1. 前往 [LINE Developers](https://developers.line.biz/) 建立 Messaging API Channel。
+2. 在 `Messaging API` 分頁，將你的 Webhook URL 設定為 2.4 步驟取得的 Apps Script 網址，並開啟「Use webhook」。
+3. **重要：** 前往 LINE Official Account Manager (官方帳號設定中心)：
+   - 將「回應模式」設為「聊天 Bot」
+   - 將「Webhook」設為「開啟」
+   - 將「自動回覆訊息」設為「關閉」（讓 AI 掌管回覆！）
+4. 在 Messaging API 頁面取得 `Channel Access Token`，並在 Basic Settings 取得自己的 `Your user ID`。
+5. （填回 CONFIG 然後重新部署 Apps Script 建立新版本：點部署 → 管理部署作業 → 編輯 → 建立新版本）。
 
 ---
 
-## 更新部署
+## 完成！如何使用 AI 功能？
 
-### 修改前端程式碼後
-
-只需要將變更推送到 GitHub，GitHub Actions 會自動重新部署：
-
-```bash
-git add .
-git commit -m "更新說明"
-git push
-```
-
-### 修改 Apps Script 後
-
-1. 在 Apps Script 編輯器中儲存修改
-2. 點選「部署」→「管理部署作業」
-3. 點選最新部署旁的編輯圖示
-4. 版本選擇「建立新版本」
-5. 點選「部署」
-
-> 每次修改 Apps Script 程式碼後，必須建立新版本並重新部署，變更才會生效。
-
----
-
-## 常見問題
-
-### Q: 報修單送出後顯示失敗？
-
-1. 確認 `.env.production` 或 GitHub Variable 中的 `NEXT_PUBLIC_API_URL` 是否正確
-2. 確認 Apps Script 已正確部署且存取權限為「所有人」
-3. 開啟瀏覽器開發者工具（F12）查看 Console 錯誤訊息
-
-### Q: LINE 通知沒有收到？
-
-1. 確認 Apps Script 中的 `LINE_CHANNEL_ACCESS_TOKEN` 和 `LINE_USER_ID` 填寫正確
-2. 確認 LINE Bot 有加入好友
-3. 在 Apps Script 中查看「執行項目」紀錄，檢查是否有錯誤
-
-### Q: 如何修改管理密碼？
-
-修改 Apps Script 中 `CONFIG.DASHBOARD_PASSWORD` 的值，儲存後重新部署。
-
-### Q: 如何使用自訂網域？
-
-1. 在 GitHub Repository Settings → Pages 中設定 Custom domain
-2. 使用自訂網域時，移除 GitHub Variable 中的 `NEXT_PUBLIC_BASE_PATH`（或設為空值）
-3. 重新推送觸發部署
+- **管理員專屬功能：**
+  你可以對 Bot 說：「麻煩把單號 5 結案」
+  Bot: ✅ 單號 #5 已結案！
+- **一般使用者報修：**
+  隨便任何加入 LINE Bot 的人傳訊：「我是輔導室的美環老師，1 樓的走廊盆栽破了」
+  Bot: ✅ 已為您登記報修！單號為 #6。處理完畢後會透過 LINE 通知您。
+- **網頁後台雙向同步通知：**
+  管理員如果在 GitHub Pages 網頁平台上修改狀態為「處理中」或「結案」。系統會透過隱藏的 `reporterLineId` 自動私訊原本用 LINE 報修的老師進度更新！
