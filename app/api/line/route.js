@@ -1,9 +1,11 @@
+// 強制 Next.js 不要快取這個路徑，這行非常重要！
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 
 export async function POST(req) {
     try {
-        // 1. 這裡之後會放處理 LINE 訊息的邏輯
-        // 2. 目前先讓它回傳 200 OK，證明比比在門口聽到了
+        // 讓 LINE 驗證通過的 OK 回應
         return new Response('OK', { status: 200 });
     } catch (error) {
         console.error('LINE Webhook Error:', error);
@@ -11,9 +13,9 @@ export async function POST(req) {
     }
 }
 
-// 增加這個 GET 方法，是為了讓你用瀏覽器測網址時不會看到 404
+// 讓瀏覽器測試時不會 404
 export async function GET() {
     return NextResponse.json({
-        message: "哈囉！加加樂，這裡是比比的聽筒，請用 LINE 的 POST 訊號傳送資料喔！"
+        message: "哈囉！加加樂，比比的聽筒已經強制轉為動態模式了！"
     });
 }
