@@ -309,7 +309,7 @@ function replyToLine(replyToken, text) {
   UrlFetchApp.fetch('https://api.line.me/v2/bot/message/reply', {
     method: 'post',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.LINE_CHANNEL_ACCESS_TOKEN },
-    payload: JSON.stringify({ replyToken: replyToken, messages: [{ type: 'text', text: text }] }),
-    muteHttpExceptions: true
-  });
+    payload: JSON.stringify({ replyToken: replyToken, messages: [{ type: 'text', text: String(text) }] })
+  }); // 注意：只有這行！把 muteHttpExceptions: true 拿掉了，我也加入了 String(text) 的安全機制
 }
+
