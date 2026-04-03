@@ -10,10 +10,10 @@
 
 const CONFIG = {
   SHEET_NAME: '報修紀錄',
-  DASHBOARD_PASSWORD: 'admin1234', // 網頁管理密碼
-  LINE_CHANNEL_ACCESS_TOKEN: '',   // LINE Bot Token
-  LINE_USER_ID: '',                // 管理員的 LINE ID（收到新報修會通知他。只有他能用 LINE 改單）
-  GEMINI_API_KEY: '',              // Google AI Studio 申請的免費金鑰
+  DASHBOARD_PASSWORD: 'admin3531', // 網頁管理密碼
+  LINE_CHANNEL_ACCESS_TOKEN: 'b7/Lqf+zUSEIrXRs4WNhPk2jQTpmA1vS56NMpAwa+couLBHPRx/3kw2jCTuYRPwu8hRjKE85Os301Vh0QnP2I92fM0NrtQiyjcYChcnOadkw5/qoHdIU8Vo0dYcgyYN5HTIFHKNyXnWp2EjJcT0uyAdB04t89/1O/w1cDnyilFU=',   // LINE Bot Token
+  LINE_USER_ID: 'U2b52ae8fcbb4d01321a937aa2b5d33b6',                // 管理員的 LINE ID（收到新報修會通知他。只有他能用 LINE 改單）
+  GEMINI_API_KEY: 'AIzaSyAKMllDsPGW8SrKb2Yl4xH9I9IlnGEwciE',              // Google AI Studio 申請的免費金鑰
 };
 
 // ==========================================
@@ -61,12 +61,12 @@ function doPost(e) {
     // ==========================================
     if (body.events !== undefined) {
       if (Array.isArray(body.events)) {
-        body.events.forEach(function(event) {
+        body.events.forEach(function (event) {
           if (event.type === 'message' && event.message.type === 'text') {
             const userMessage = event.message.text;
             const replyToken = event.replyToken;
             const userId = event.source.userId;
-            
+
             // 將使用者的話交給 AI 解析
             const aiResult = callGeminiAPI(userMessage);
             if (!aiResult) {
@@ -80,7 +80,7 @@ function doPost(e) {
               replyToLine(replyToken, `✅ 已為您登記報修！單號為 #${result.id}。\n處理完畢後會透過 LINE 通知您。`);
               // 推播給管理員
               pushToLine(CONFIG.LINE_USER_ID, `🔔【新報修(AI代收)】\n單號: #${result.id}\n單位: ${aiResult.data.department} (${aiResult.data.teacher})\n地點: ${aiResult.data.location} - ${aiResult.data.classroom}\n維修項目: ${aiResult.data.category}\n說明: ${aiResult.data.description}`);
-            
+
             } else if (aiResult.intent === "CLOSE") {
               // 驗證身分：只有管理員能透過 LINE 直接結案
               if (userId !== CONFIG.LINE_USER_ID) {
@@ -247,7 +247,7 @@ function updateReport(id, data, source) {
 function callGeminiAPI(text) {
   if (!CONFIG.GEMINI_API_KEY) return null;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`;
-  
+
   const prompt = `你是一個學校報修系統的 AI 助理，請判斷使用者的文字意圖，擷取實體並嚴格回傳只包含 JSON 格式的字串，不要包含 \`\`\`json 標記，也不要有其他廢話。
 
 意圖選項：
