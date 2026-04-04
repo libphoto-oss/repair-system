@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { addReport } from '@/lib/api';
 
 const LOCATIONS = [
@@ -58,10 +59,13 @@ export default function ReportForm() {
       </div>
       <div className="card">
         <div className="mascot-container">
-          <img
+          <Image
             src="/bibi_mascot.png"
             alt="比比狗狗智能助理"
+            width={160}
+            height={160}
             className="mascot-image"
+            priority
           />
         </div>
         <h1>維修通報申請單</h1>

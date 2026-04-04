@@ -6,11 +6,16 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+  
   return (
     <html lang="zh-TW">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <style dangerouslySetInnerHTML={{ __html: `
+          body { background-image: url('${basePath}/bibi_bg.png'); }
+        `}} />
       </head>
       <body>{children}</body>
     </html>
