@@ -138,6 +138,10 @@ function doPost(e) {
       const success = body.password === CONFIG.DASHBOARD_PASSWORD;
       return jsonResponse({ success });
     }
+    if (action === 'deleteReport') {
+      const result = deleteReport(body.id);
+      return jsonResponse(result);
+    }
 
     return jsonResponse({ error: 'Unknown action' });
   } catch (err) {
@@ -226,6 +230,19 @@ function addReport(data) {
     // 寫入完畢，一定要釋放鎖，讓下一個排隊的人可以寫入
     lock.releaseLock();
   }
+}
+
+function deleteReport(id) {
+  const sheet = getSheet();
+  const allData = sheet.getDataRange().getValues();
+  for (let i = 1; i < allData.length; i++) {
+    if (String(allData[i][0]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      SpreadsheetApp.flush();
+      return { success: true };
+    }
+  }
+  return { error: '找不到指定的報修紀錄' };
 }
 
 function updateReport(id, data, source) {
