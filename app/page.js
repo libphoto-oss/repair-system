@@ -47,7 +47,7 @@ export default function ReportForm() {
       </div>
       <div className="card">
         <div style={{ textAlign: 'center', marginBottom: '-10px' }}>
-          <img src="/bibi_mascot.png" alt="比比狗狗智能助理" style={{ width: '130px', height: '130px', objectFit: 'contain', filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }} />
+          <img src="/bibi_mascot.png" alt="比比狗狗智能助理" style={{ width: '180px', height: '180px', objectFit: 'contain', filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }} />
         </div>
         <h1>維修通報申請單</h1>
         {message && (

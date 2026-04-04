@@ -196,7 +196,7 @@ function addReport(data) {
 
     const sheet = getSheet();
     const newId = getNextId(sheet);
-    const now = new Date().toISOString();
+    const now = Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy/MM/dd HH:mm:ss");
 
     sheet.appendRow([
       newId,
