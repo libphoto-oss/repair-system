@@ -155,10 +155,18 @@ export default function ReportForm() {
             <label>報修項目</label>
             <select name="category" value={formData.category} onChange={handleChange} required>
               <option value="">請選擇</option>
-              <option value="水電設備">水電設備</option>
-              <option value="資訊設備（電腦/投影機）">資訊設備（電腦/投影機）</option>
-              <option value="桌椅傢具">桌椅傢具</option>
-              <option value="建築毀損">建築毀損</option>
+              <option value="電腦系統">電腦系統</option>
+              <option value="電腦軟體">電腦軟體</option>
+              <option value="電腦主機">電腦主機</option>
+              <option value="鍵盤">鍵盤</option>
+              <option value="滑鼠">滑鼠</option>
+              <option value="光碟機">光碟機</option>
+              <option value="螢幕">螢幕</option>
+              <option value="音源">音源</option>
+              <option value="網路">網路</option>
+              <option value="投影機">投影機</option>
+              <option value="投影布幕">投影布幕</option>
+              <option value="投影布幕開關">投影布幕開關</option>
               <option value="其他">其他</option>
             </select>
           </div>
