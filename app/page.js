@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { addReport } from '@/lib/api';
@@ -28,6 +28,17 @@ export default function ReportForm() {
   });
   const [loading, setLoading] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
+  const [displayTime, setDisplayTime] = useState('');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setDisplayTime(`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`);
+    };
+    updateTime(); // Initial grab
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -89,6 +100,15 @@ export default function ReportForm() {
         )}
 
         <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>報修時間</label>
+            <input
+              type="text"
+              value={displayTime || '抓取時間中...'}
+              readOnly
+              style={{ backgroundColor: '#e2e8f0', color: '#475569', cursor: 'not-allowed' }}
+            />
+          </div>
           <div className="form-group">
             <label>單位 / 班級</label>
             <input
