@@ -9,11 +9,11 @@
 
 const CONFIG = {
   SHEET_NAME: '報修紀錄',
-  DASHBOARD_PASSWORD: 'admin3531', // 網頁管理密碼
-  LINE_CHANNEL_ACCESS_TOKEN: 'b7/Lqf+zUSEIrXRs4WNhPk2jQTpmA1vS56NMpAwa+couLBHPRx/3kw2jCTuYRPwu8hRjKE85Os301Vh0QnP2I92fM0NrtQiyjcYChcnOadkw5/qoHdIU8Vo0dYcgyYN5HTIFHKNyXnWp2EjJcT0uyAdB04t89/1O/w1cDnyilFU=',
-  LINE_USER_ID: 'U2b52ae8fcbb4d01321a937aa2b5d33b6', // 管理員的 LINE ID
-  GEMINI_API_KEY: '', // ★ 這邊請貼上你個人帳號新申請的金鑰！
-  WEB_FORM_URL: 'https://repair-system-three.vercel.app/', // 遇到塞車時備用的網頁版連結
+  DASHBOARD_PASSWORD: 'YOUR_PASSWORD_HERE', // 網頁管理密碼
+  LINE_CHANNEL_ACCESS_TOKEN: 'YOUR_LINE_CHANNEL_ACCESS_TOKEN', // LINE Bot 的 Channel Access Token
+  LINE_USER_ID: 'YOUR_LINE_USER_ID', // 管理員的 LINE ID
+  GEMINI_API_KEY: '', // Gemini API 金鑰
+  WEB_FORM_URL: 'https://your-domain.vercel.app/', // 遇到塞車時備用的網頁版連結
 };
 
 // ==========================================

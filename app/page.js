@@ -54,33 +54,32 @@ export default function ReportForm() {
   return (
     <div className="container">
       <div className="nav-links">
-        <Link href="/dashboard" style={{ background: 'rgba(255,255,255,0.7)', padding: '0.5rem 1rem', borderRadius: '8px', backdropFilter: 'blur(5px)' }}>進入維修管理系統</Link>
+        <Link href="/dashboard">進入維修管理系統</Link>
       </div>
       <div className="card">
-        <div style={{ textAlign: 'center', marginBottom: '-10px' }}>
-          <img src="/bibi_mascot.png" alt="比比狗狗智能助理" style={{ width: '180px', height: '180px', objectFit: 'contain', filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.1))' }} />
+        <div className="mascot-container">
+          <img
+            src="/bibi_mascot.png"
+            alt="比比狗狗智能助理"
+            className="mascot-image"
+          />
         </div>
         <h1>維修通報申請單</h1>
 
         {submitResult && (
-          <div style={{
-            textAlign: 'center',
-            marginBottom: '1.5rem',
-            padding: '1rem',
-            borderRadius: '10px',
-            background: submitResult.success ? '#d1fae5' : '#fee2e2',
-            border: `1px solid ${submitResult.success ? '#6ee7b7' : '#fca5a5'}`,
-          }}>
+          <div className={`submit-result ${submitResult.success ? 'success' : 'error'}`}>
             {submitResult.success ? (
               <>
-                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#065f46' }}>✅ 報修單送出成功！</div>
-                <div style={{ marginTop: '0.4rem', color: '#047857' }}>
-                  您的報修單號為 <strong style={{ fontSize: '1.2rem' }}>#{submitResult.id}</strong>，已通知相關單位。
+                <div className="result-title">報修單送出成功</div>
+                <div className="result-id">
+                  您的報修單號為 <strong>#{submitResult.id}</strong>，已通知相關單位。
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.3rem' }}>請記下單號，可向總務處查詢進度。</div>
+                <div className="result-hint">
+                  請記下單號，可向資媒組/總務處查詢進度。
+                </div>
               </>
             ) : (
-              <div style={{ fontWeight: 'bold', color: '#991b1b' }}>❌ {submitResult.message}</div>
+              <div className="result-title">{submitResult.message}</div>
             )}
           </div>
         )}
@@ -88,11 +87,25 @@ export default function ReportForm() {
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>單位 / 班級</label>
-            <input type="text" name="department" placeholder="例如：設備組 或 二年三班" value={formData.department} onChange={handleChange} required />
+            <input
+              type="text"
+              name="department"
+              placeholder="例如：設備組 或 二年三班"
+              value={formData.department}
+              onChange={handleChange}
+              required
+            />
           </div>
           <div className="form-group">
             <label>相關人員（班級導師 / 報修人）</label>
-            <input type="text" name="teacher" placeholder="請填寫姓名" value={formData.teacher} onChange={handleChange} required />
+            <input
+              type="text"
+              name="teacher"
+              placeholder="請填寫姓名"
+              value={formData.teacher}
+              onChange={handleChange}
+              required
+            />
           </div>
           <div className="form-group">
             <label>地點</label>
@@ -105,7 +118,14 @@ export default function ReportForm() {
           </div>
           <div className="form-group">
             <label>教室編號 / 空間名稱</label>
-            <input type="text" name="classroom" placeholder="例如：203教室 或 視聽教室" value={formData.classroom} onChange={handleChange} required />
+            <input
+              type="text"
+              name="classroom"
+              placeholder="例如：203教室 或 視聽教室"
+              value={formData.classroom}
+              onChange={handleChange}
+              required
+            />
           </div>
           <div className="form-group">
             <label>報修項目</label>
@@ -120,7 +140,14 @@ export default function ReportForm() {
           </div>
           <div className="form-group">
             <label>問題說明</label>
-            <textarea name="description" rows="4" placeholder="請詳細描述設備故障情形..." value={formData.description} onChange={handleChange} required></textarea>
+            <textarea
+              name="description"
+              rows="4"
+              placeholder="請詳細描述設備故障情形..."
+              value={formData.description}
+              onChange={handleChange}
+              required
+            ></textarea>
           </div>
           <button type="submit" disabled={loading}>
             {loading ? '資料傳送中...' : '送出報修單'}

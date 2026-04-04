@@ -104,6 +104,8 @@ export default function Dashboard() {
     exportToExcel(reports);
   };
 
+  const hasActiveFilters = filterStatus || filterCategory || filterLocation;
+
   return (
     <div className="container" style={{ maxWidth: '1000px' }}>
       <div className="nav-links">
@@ -111,69 +113,64 @@ export default function Dashboard() {
       </div>
 
       {/* 頂部控制卡片 */}
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
-        <h1 style={{ marginBottom: '1rem' }}>維修進度管理後台</h1>
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem 1.5rem 1.2rem' }}>
+        <h1>維修進度管理後台</h1>
 
         {/* 統計數字 */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-          {[
-            { label: '全部', value: total, color: '#4f46e5', bg: '#ede9fe' },
-            { label: '處理中', value: pending, color: '#d97706', bg: '#fef3c7' },
-            { label: '已結案', value: closed, color: '#059669', bg: '#d1fae5' },
-          ].map(stat => (
-            <div key={stat.label} style={{ textAlign: 'center', background: stat.bg, borderRadius: '10px', padding: '0.6rem 1.4rem', minWidth: '80px' }}>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: stat.color, lineHeight: 1 }}>{stat.value}</div>
-              <div style={{ fontSize: '0.8rem', color: stat.color, marginTop: '0.2rem' }}>{stat.label}</div>
-            </div>
-          ))}
+        <div className="stats-row">
+          <div className="stat-card total">
+            <div className="stat-value">{total}</div>
+            <div className="stat-label">全部</div>
+          </div>
+          <div className="stat-card pending">
+            <div className="stat-value">{pending}</div>
+            <div className="stat-label">處理中</div>
+          </div>
+          <div className="stat-card closed">
+            <div className="stat-value">{closed}</div>
+            <div className="stat-label">已結案</div>
+          </div>
         </div>
 
         {/* 按鈕列 */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <button type="button" onClick={handleExport} style={{ width: 'auto', background: '#059669' }}>
+        <div className="controls-row">
+          <button type="button" className="control-btn export-btn" onClick={handleExport}>
             匯出 Excel 報表
           </button>
           {!unlocked && (
-            <form onSubmit={handleUnlock} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <form onSubmit={handleUnlock} className="unlock-form">
               <input
                 type="password"
-                placeholder="輸入管理密碼以啟用編輯"
+                placeholder="輸入管理密碼"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
-                style={{ width: '220px', margin: 0 }}
               />
-              <button type="submit" style={{ width: 'auto', whiteSpace: 'nowrap' }}>解鎖編輯</button>
+              <button type="submit" className="control-btn unlock-btn">解鎖編輯</button>
             </form>
           )}
           {unlocked && (
-            <span style={{ color: 'var(--success-color)', fontWeight: 600, alignSelf: 'center' }}>
-              ✅ 已解鎖編輯權限
+            <span className="unlocked-badge">
+              已解鎖編輯權限
             </span>
           )}
         </div>
         {authError && (
-          <p style={{ color: 'red', textAlign: 'center', marginTop: '0.5rem', marginBottom: 0 }}>{authError}</p>
+          <p className="auth-error">{authError}</p>
         )}
 
         {/* 排序 */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>排序：</span>
+        <div className="sort-row">
+          <span className="row-label">排序</span>
           {[
-            { value: 'pending_first', label: '🔴 未結案優先' },
-            { value: 'time_desc', label: '⬇ 最新優先' },
-            { value: 'time_asc', label: '⬆ 最舊優先' },
+            { value: 'pending_first', label: '未結案優先' },
+            { value: 'time_desc', label: '最新優先' },
+            { value: 'time_asc', label: '最舊優先' },
           ].map(opt => (
             <button
               key={opt.value}
               type="button"
+              className={`sort-btn ${sortBy === opt.value ? 'active' : 'inactive'}`}
               onClick={() => setSortBy(opt.value)}
-              style={{
-                width: 'auto',
-                background: sortBy === opt.value ? 'var(--primary-color)' : '#e5e7eb',
-                color: sortBy === opt.value ? 'white' : 'var(--text-primary)',
-                padding: '0.4rem 0.9rem',
-                fontSize: '0.85rem',
-              }}
             >
               {opt.label}
             </button>
@@ -181,38 +178,38 @@ export default function Dashboard() {
         </div>
 
         {/* 篩選 */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>篩選：</span>
+        <div className="filter-row">
+          <span className="row-label">篩選</span>
           <select
+            className="filter-select"
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            style={{ width: 'auto', padding: '0.35rem 0.7rem', fontSize: '0.85rem' }}
           >
             <option value="">全部狀態</option>
             <option value="pending">處理中</option>
             <option value="closed">已結案</option>
           </select>
           <select
+            className="filter-select"
             value={filterCategory}
             onChange={e => setFilterCategory(e.target.value)}
-            style={{ width: 'auto', padding: '0.35rem 0.7rem', fontSize: '0.85rem' }}
           >
             <option value="">全部類別</option>
             {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <select
+            className="filter-select"
             value={filterLocation}
             onChange={e => setFilterLocation(e.target.value)}
-            style={{ width: 'auto', padding: '0.35rem 0.7rem', fontSize: '0.85rem' }}
           >
             <option value="">全部地點</option>
             {locationOptions.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
-          {(filterStatus || filterCategory || filterLocation) && (
+          {hasActiveFilters && (
             <button
               type="button"
+              className="clear-filter-btn"
               onClick={() => { setFilterStatus(''); setFilterCategory(''); setFilterLocation(''); }}
-              style={{ width: 'auto', background: '#6b7280', padding: '0.35rem 0.7rem', fontSize: '0.85rem' }}
             >
               清除篩選
             </button>
@@ -220,8 +217,8 @@ export default function Dashboard() {
         </div>
 
         {/* 篩選結果數量提示 */}
-        {(filterStatus || filterCategory || filterLocation) && (
-          <p style={{ textAlign: 'center', marginTop: '0.5rem', marginBottom: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+        {hasActiveFilters && (
+          <p className="filter-count">
             顯示 {sortedReports.length} / {total} 筆
           </p>
         )}
@@ -229,46 +226,53 @@ export default function Dashboard() {
 
       {/* 報修清單 */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '2rem' }}>載入中...</div>
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>載入中...</span>
+        </div>
       ) : sortedReports.length === 0 ? (
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+        <p className="empty-state">
           {reports.length === 0 ? '目前尚無任何報修紀錄。' : '沒有符合篩選條件的紀錄。'}
         </p>
       ) : (
-        sortedReports.map(report => (
-          <div key={report.id} className="report-item">
+        sortedReports.map((report, index) => (
+          <div
+            key={report.id}
+            className={`report-item ${Number(report.isClosed) === 1 ? 'is-closed' : ''}`}
+            style={{ animationDelay: `${index * 0.05}s` }}
+          >
             <div className="report-header">
               <h2>#{report.id} {report.category}</h2>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div className="header-actions">
                 <span className={`badge ${Number(report.isClosed) === 1 ? 'closed' : 'pending'}`}>
                   {Number(report.isClosed) === 1 ? '已結案' : '處理中'}
                 </span>
                 {unlocked && (
                   <button
                     type="button"
+                    className="delete-btn"
                     onClick={() => handleDelete(report.id)}
-                    style={{ width: 'auto', background: '#ef4444', padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                     title="刪除此報修單"
                   >
-                    🗑 刪除
+                    刪除
                   </button>
                 )}
               </div>
             </div>
 
             <div className="report-grid">
-              <div><strong>報修單位:</strong> {report.department} ({report.teacher})</div>
-              <div><strong>報修時間:</strong> {report.reportTime}</div>
-              <div><strong>地點:</strong> {report.location} - {report.classroom}</div>
-              <div style={{ gridColumn: '1 / -1' }}><strong>問題說明:</strong> {report.description}</div>
-              {report.assignedPerson && <div><strong>前往人員:</strong> {report.assignedPerson}</div>}
-              {report.status && report.status !== '未處理' && <div><strong>維修情形:</strong> {report.status}</div>}
+              <div className="detail-item"><strong>報修單位：</strong>{report.department}（{report.teacher}）</div>
+              <div className="detail-item"><strong>報修時間：</strong>{report.reportTime}</div>
+              <div className="detail-item"><strong>地點：</strong>{report.location} - {report.classroom}</div>
+              <div className="detail-item full-width"><strong>問題說明：</strong>{report.description}</div>
+              {report.assignedPerson && <div className="detail-item"><strong>前往人員：</strong>{report.assignedPerson}</div>}
+              {report.status && report.status !== '未處理' && <div className="detail-item"><strong>維修情形：</strong>{report.status}</div>}
             </div>
 
             {unlocked && (
               <div className="update-form">
                 <div>
-                  <label>維修情形（進度備註）</label>
+                  <label>維修情形</label>
                   <select
                     defaultValue={report.status || '未處理'}
                     onChange={(e) => handleUpdate(report.id, 'status', e.target.value)}
